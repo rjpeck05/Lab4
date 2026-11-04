@@ -191,7 +191,7 @@ class ClassifyRequestRulesTest(unittest.TestCase):
                 self.assertIsNone(out.response)  # nothing is acted on
                 self.assertIsNotNone(out.handoff)  # the off-ramp fired
                 self.assertIn("library staff", out.view_model.lines[0])
-                self.assertEqual(api._bookings.list_for_room("R1"), [])  # no side effects
+                self.assertEqual(api.bookings_for_room("R1"), [])  # no side effects
 
     def test_an_unavailable_assistant_hands_the_student_to_library_staff(self):
         api = TestingApi(ROOMS, now=NOW, model=UnavailableModel())

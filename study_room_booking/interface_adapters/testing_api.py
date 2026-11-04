@@ -220,6 +220,9 @@ class TestingApi:
     def get_booking(self, booking_id: str) -> Optional[Booking]:
         return self._bookings.get(booking_id)
 
+    def bookings_for_room(self, room_id: str) -> list[Booking]:
+        return self._bookings.list_for_room(room_id)
+
     # ---- driving the use cases through their input boundary ----
 
     def book_room(
