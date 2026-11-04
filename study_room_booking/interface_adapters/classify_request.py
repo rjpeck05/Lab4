@@ -20,6 +20,15 @@ class ClassifyRequestPresenter(ClassifyRequestOutputBoundary):
     def present_error(self, message: str) -> None:
         self.view_model = ViewModel(False, (f"Error: {message}",))
 
+    def present_handoff(self, reason: str) -> None:
+        self.view_model = ViewModel(
+            False,
+            (
+                "I couldn't work that out. Please ask library staff at the front desk;"
+                " they will help you.",
+            ),
+        )
+
 
 class ClassifyRequestController:
     def __init__(self, use_case: ClassifyRequest, presenter: ClassifyRequestPresenter) -> None:

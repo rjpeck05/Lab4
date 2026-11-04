@@ -38,6 +38,10 @@ class ClassifyRequestOutputBoundary(ABC):
     @abstractmethod
     def present_error(self, message: str) -> None: ...
 
+    @abstractmethod
+    def present_handoff(self, reason: str) -> None:
+        """Guardrail off-ramp: the assistant could not be trusted, so a person takes over."""
+
 
 class ClassifyRequest:
     """The one AI decision point: which command does a free-text message mean?
@@ -54,10 +58,14 @@ class ClassifyRequest:
         if not request.text.strip():
             self._output.present_error("Please type a message to classify.")
             return
-        reply = self._model.complete(PROMPT.format(text=request.text)).strip().lower()
+        try:
+            reply = self._model.complete(PROMPT.format(text=request.text)).strip().lower()
+        except Exception:  # an unavailable model is a guardrail failure, not a crash
+            self._output.present_handoff("The assistant is unavailable.")
+            return
         try:
             intent = Intent(reply)
         except ValueError:
-            self._output.present_error("The assistant gave an answer I could not use.")
+            self._output.present_handoff("The assistant gave an answer that could not be used.")
             return
         self._output.present_intent(ClassifyRequestResponse(intent))

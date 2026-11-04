@@ -27,6 +27,12 @@ from study_room_booking.use_cases.cancel_booking import (
     CancelBookingRequest,
     CancelBookingResponse,
 )
+from study_room_booking.use_cases.classify_request import (
+    ClassifyRequest,
+    ClassifyRequestRequest,
+    ClassifyRequestResponse,
+)
+from study_room_booking.use_cases.model_gateway import ModelGateway
 from study_room_booking.use_cases.list_available_rooms import (
     ListAvailableRooms,
     ListAvailableRoomsRequest,
@@ -34,8 +40,10 @@ from study_room_booking.use_cases.list_available_rooms import (
 )
 
 from .book_room import BookRoomPresenter
+from .classify_request import ClassifyRequestPresenter
 from .cancel_booking import CancelBookingPresenter
 from .gateways.fake_clock import FakeClock
+from .gateways.fake_model_adapter import FakeModelAdapter
 from .gateways.in_memory_bookings import InMemoryBookingGateway
 from .gateways.in_memory_rooms import InMemoryRoomGateway
 from .list_available_rooms import ListAvailableRoomsPresenter
@@ -58,10 +66,11 @@ class Outcome(Generic[R]):
     response: Optional[R]
     error: Optional[str]
     view_model: ViewModel
+    handoff: Optional[str] = None  # set when the system passed the user to a human
 
     @property
     def ok(self) -> bool:
-        return self.error is None
+        return self.error is None and self.handoff is None
 
 
 MutableClock = FakeClock  # kept so existing imports keep working
@@ -73,14 +82,18 @@ MutableClock = FakeClock  # kept so existing imports keep working
 class _CaptureMixin:
     captured_response = None
     captured_error: Optional[str] = None
+    captured_handoff: Optional[str] = None
 
     def clear_capture(self) -> None:
         self.captured_response = None
         self.captured_error = None
+        self.captured_handoff = None
         self.view_model = ViewModel(True, ())
 
     def outcome(self) -> Outcome:
-        return Outcome(self.captured_response, self.captured_error, self.view_model)
+        return Outcome(
+            self.captured_response, self.captured_error, self.view_model, self.captured_handoff
+        )
 
 
 class _CapturingBookRoomPresenter(_CaptureMixin, BookRoomPresenter):
@@ -113,10 +126,30 @@ class _CapturingListAvailableRoomsPresenter(_CaptureMixin, ListAvailableRoomsPre
         super().present_error(message)
 
 
+class _CapturingClassifyRequestPresenter(_CaptureMixin, ClassifyRequestPresenter):
+    def present_intent(self, response: ClassifyRequestResponse) -> None:
+        self.captured_response = response
+        super().present_intent(response)
+
+    def present_error(self, message: str) -> None:
+        self.captured_error = message
+        super().present_error(message)
+
+    def present_handoff(self, reason: str) -> None:
+        self.captured_handoff = reason
+        super().present_handoff(reason)
+
+
 class TestingApi:
     __test__ = False  # keep test runners from collecting this class
 
-    def __init__(self, rooms: Iterable[Room] = (), now: datetime = DEFAULT_NOW) -> None:
+    def __init__(
+        self,
+        rooms: Iterable[Room] = (),
+        now: datetime = DEFAULT_NOW,
+        model: Optional[ModelGateway] = None,
+    ) -> None:
+        self._model = model if model is not None else FakeModelAdapter()
         self._wire(rooms, now)
 
     def _wire(self, rooms: Iterable[Room], now: datetime) -> None:
@@ -127,12 +160,14 @@ class TestingApi:
         self._book_out = _CapturingBookRoomPresenter()
         self._cancel_out = _CapturingCancelBookingPresenter()
         self._list_out = _CapturingListAvailableRoomsPresenter()
+        self._classify_out = _CapturingClassifyRequestPresenter()
 
         self._book_room = BookRoom(self._rooms, self._bookings, self._clock, self._book_out)
         self._cancel_booking = CancelBooking(self._bookings, self._clock, self._cancel_out)
         self._list_available_rooms = ListAvailableRooms(
             self._rooms, self._bookings, self._list_out
         )
+        self._classify_request = ClassifyRequest(self._model, self._classify_out)
 
     # ---- forcing a starting state ----
 
@@ -175,6 +210,11 @@ class TestingApi:
         self._bookings.add(booking)
         return booking.id
 
+    @property
+    def model(self) -> ModelGateway:
+        """The (fake) model gateway, so a test can switch scenarios or read prompts."""
+        return self._model
+
     # ---- inspecting state (for assertions on side effects) ----
 
     def get_booking(self, booking_id: str) -> Optional[Booking]:
@@ -200,3 +240,8 @@ class TestingApi:
         self._list_out.clear_capture()
         self._list_available_rooms.execute(ListAvailableRoomsRequest(start, end, group_size))
         return self._list_out.outcome()
+
+    def classify_request(self, text: str) -> Outcome[ClassifyRequestResponse]:
+        self._classify_out.clear_capture()
+        self._classify_request.execute(ClassifyRequestRequest(text))
+        return self._classify_out.outcome()
