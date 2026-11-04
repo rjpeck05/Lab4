@@ -27,7 +27,6 @@ from study_room_booking.use_cases.cancel_booking import (
     CancelBookingRequest,
     CancelBookingResponse,
 )
-from study_room_booking.use_cases.clock import Clock
 from study_room_booking.use_cases.list_available_rooms import (
     ListAvailableRooms,
     ListAvailableRoomsRequest,
@@ -36,6 +35,7 @@ from study_room_booking.use_cases.list_available_rooms import (
 
 from .book_room import BookRoomPresenter
 from .cancel_booking import CancelBookingPresenter
+from .gateways.fake_clock import FakeClock
 from .gateways.in_memory_bookings import InMemoryBookingGateway
 from .gateways.in_memory_rooms import InMemoryRoomGateway
 from .list_available_rooms import ListAvailableRoomsPresenter
@@ -64,15 +64,7 @@ class Outcome(Generic[R]):
         return self.error is None
 
 
-class MutableClock(Clock):
-    def __init__(self, now: datetime) -> None:
-        self._now = now
-
-    def now(self) -> datetime:
-        return self._now
-
-    def set(self, now: datetime) -> None:
-        self._now = now
+MutableClock = FakeClock  # kept so existing imports keep working
 
 
 # --- capturing output boundaries: the real presenters, plus a record of the raw result ---
