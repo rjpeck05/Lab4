@@ -38,7 +38,7 @@ class StudentShell(cmd.Cmd):
         except TypeError:
             print(f"Usage: {usage}")
             return
-        for line in view_model.lines:
+        for line in view_model.messages:
             print(line)
 
     def do_available(self, args: str) -> None:

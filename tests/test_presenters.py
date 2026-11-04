@@ -28,7 +28,7 @@ class BookRoomPresenterTest(unittest.TestCase):
 
         self.assertTrue(presenter.view_model.ok)
         self.assertEqual(
-            presenter.view_model.lines,
+            presenter.view_model.messages,
             ("Booked! Reference B0001: room R1, 2026-11-02 10:00 -> 12:00.",),
         )
 
@@ -56,7 +56,7 @@ class CancelBookingPresenterTest(unittest.TestCase):
         presenter.present_error("You can only cancel your own bookings.")
         self.assertFalse(presenter.view_model.ok)
         self.assertEqual(
-            presenter.view_model.lines, ("Error: You can only cancel your own bookings.",)
+            presenter.view_model.messages, ("Error: You can only cancel your own bookings.",)
         )
 
 
@@ -66,7 +66,7 @@ class ListAvailableRoomsPresenterTest(unittest.TestCase):
         rooms = (AvailableRoom("R1", "Room 1", "Library", 4), AvailableRoom("R2", "Room 2", "Annex", 8))
         presenter.present_rooms(ListAvailableRoomsResponse(START, END, rooms))
 
-        header, first, second = presenter.view_model.lines
+        header, first, second = presenter.view_model.messages
         self.assertTrue(presenter.view_model.ok)
         self.assertEqual(header, "Available 2026-11-02 10:00 -> 12:00:")
         self.assertIn("R1", first)
@@ -102,8 +102,8 @@ class ClassifyRequestPresenterTest(unittest.TestCase):
 
         view = presenter.view_model
         self.assertFalse(view.ok)
-        self.assertIn("library staff", view.lines[0])
-        self.assertNotIn("assistant", view.lines[0].lower())
+        self.assertIn("library staff", view.messages[0])
+        self.assertNotIn("assistant", view.messages[0].lower())
 
     def test_a_rejected_message_is_shown_as_a_failed_view_with_the_reason(self):
         presenter = ClassifyRequestPresenter()

@@ -45,6 +45,23 @@ class BookRoomOutputBoundary(ABC):
     def present_error(self, message: str) -> None: ...
 
 
+class UpcomingBookingLimit:
+    """Rule helper: a student may hold at most N bookings that have not yet finished."""
+
+    def __init__(self, bookings: BookingGateway, maximum: int = MAX_UPCOMING_BOOKINGS_PER_STUDENT) -> None:
+        self._bookings = bookings
+        self._maximum = maximum
+
+    def enforce(self, student_id: str, now: datetime) -> None:
+        upcoming = [
+            b for b in self._bookings.list_active_for_student(student_id) if b.slot.end > now
+        ]
+        if len(upcoming) >= self._maximum:
+            raise BookingRuleViolation(
+                f"Students may hold at most {self._maximum} upcoming bookings."
+            )
+
+
 class BookRoom:
     def __init__(
         self,
@@ -57,6 +74,7 @@ class BookRoom:
         self._bookings = bookings
         self._clock = clock
         self._output = output
+        self._upcoming_limit = UpcomingBookingLimit(bookings)
 
     def execute(self, request: BookRoomRequest) -> None:
         try:
@@ -82,16 +100,7 @@ class BookRoom:
         if slot.start <= now:
             raise BookingRuleViolation("Bookings must start in the future.")
 
-        upcoming = [
-            b
-            for b in self._bookings.list_active_for_student(request.student_id)
-            if b.slot.end > now
-        ]
-        if len(upcoming) >= MAX_UPCOMING_BOOKINGS_PER_STUDENT:
-            raise BookingRuleViolation(
-                f"Students may hold at most {MAX_UPCOMING_BOOKINGS_PER_STUDENT} "
-                "upcoming bookings."
-            )
+        self._upcoming_limit.enforce(request.student_id, now)
 
         candidate = Booking(
             id=self._bookings.next_id(),

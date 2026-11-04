@@ -21,14 +21,14 @@ class TestingApiTest(unittest.TestCase):
         self.assertTrue(out.ok)
         self.assertEqual(out.response.booking_id, "B0001")
         self.assertTrue(out.view_model.ok)
-        self.assertIn("Booked!", out.view_model.lines[0])
+        self.assertIn("Booked!", out.view_model.messages[0])
 
     def test_failure_exposes_raw_error_and_view_model(self):
         out = self.api.book_room("s1", "R1", at(2, 10), at(2, 14))
         self.assertFalse(out.ok)
         self.assertIsNone(out.response)
         self.assertEqual(out.error, "A booking may last at most 3 hours.")
-        self.assertEqual(out.view_model.lines, ("Error: " + out.error,))
+        self.assertEqual(out.view_model.messages, ("Error: " + out.error,))
 
     def test_seeded_booking_blocks_a_conflicting_booking(self):
         self.api.seed_booking("R1", "other", at(2, 10), at(2, 12))
@@ -64,7 +64,7 @@ class TestingApiTest(unittest.TestCase):
         self.api.seed_booking("R2", "s1", at(2, 10), at(2, 12))
         out = self.api.list_available_rooms(at(2, 10), at(2, 12), 2)
         self.assertEqual([r.room_id for r in out.response.rooms], ["R1"])
-        self.assertIn("R1", out.view_model.lines[1])
+        self.assertIn("R1", out.view_model.messages[1])
 
     def test_each_run_reports_only_its_own_result(self):
         self.assertFalse(self.api.book_room("s1", "NOPE", at(2, 10), at(2, 11)).ok)

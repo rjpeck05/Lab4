@@ -28,7 +28,7 @@ class FixedClock(Clock):
 
 
 def text(view_model):
-    return " ".join(view_model.lines)
+    return " ".join(view_model.messages)
 
 
 class BookingAStudyRoomTest(unittest.TestCase):

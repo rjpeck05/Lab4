@@ -164,7 +164,7 @@ class ClassifyRequestRulesTest(unittest.TestCase):
 
         self.assertTrue(out.ok)
         self.assertIs(out.response.intent, Intent.BOOK)
-        self.assertIn("book", out.view_model.lines[0])
+        self.assertIn("book", out.view_model.messages[0])
 
     def test_the_students_message_is_what_is_sent_to_the_assistant(self):
         api = TestingApi(ROOMS, now=NOW, model=model_saying("cancel"))
@@ -190,7 +190,7 @@ class ClassifyRequestRulesTest(unittest.TestCase):
                 self.assertFalse(out.ok)
                 self.assertIsNone(out.response)  # nothing is acted on
                 self.assertIsNotNone(out.handoff)  # the off-ramp fired
-                self.assertIn("library staff", out.view_model.lines[0])
+                self.assertIn("library staff", out.view_model.messages[0])
                 self.assertEqual(api.bookings_for_room("R1"), [])  # no side effects
 
     def test_an_unavailable_assistant_hands_the_student_to_library_staff(self):
@@ -199,7 +199,7 @@ class ClassifyRequestRulesTest(unittest.TestCase):
         out = api.classify_request("I need a room")
 
         self.assertIsNotNone(out.handoff)
-        self.assertIn("library staff", out.view_model.lines[0])
+        self.assertIn("library staff", out.view_model.messages[0])
 
 
 if __name__ == "__main__":
